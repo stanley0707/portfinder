@@ -5,6 +5,18 @@ description = "port scanner"
 authors = ["Stanislav Shilov <s.shilow@lynkey.io>"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/stanley0707/portex"
+repository = "https://github.com/stanley0707/portex"
+keywords = ["port", "scanner", "network", "security"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Topic :: Security",
+]
+
+[tool.poetry.scripts]
+portex = "portex.cli:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -13,7 +25,7 @@ ipaddress = "^1.0.23"
 aiofiles = "^24.1.0"
 structlog = "^25.4.0"
 rich = "^14.0.0"
-
+typer = "^0.16.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
