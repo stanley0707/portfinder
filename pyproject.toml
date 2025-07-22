@@ -1,0 +1,71 @@
+[tool.poetry]
+name = "portex"
+version = "0.1.0"
+description = "port scanner"
+authors = ["Stanislav Shilov <s.shilow@lynkey.io>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+aiohttp = "^3.12.14"
+ipaddress = "^1.0.23"
+aiofiles = "^24.1.0"
+structlog = "^25.4.0"
+rich = "^14.0.0"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
+isort = "^6.0.1"
+mypy = "^1.17.0"
+ruff = "^0.12.4"
+types-aiofiles = "^24.1.0.20250708"
+types-setuptools = "^80.9.0.20250529"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "F821"]
+exclude = [
+    "**/tests/",
+    "**/test*.py",
+    "env/",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["portex"]
+combine-as-imports = true
+split-on-trailing-comma = true
+force-sort-within-sections = true
+[tool.isort]
+lines_after_imports = 2
+skip = [
+    "env",
+    ".env",
+    "**/__pycache__",
+    "**/test*.py",
+]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 2
+use_parentheses = true
+line_length = 120
+
+
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+extend-exclude = '''
+/(
+    \.env|
+    env|
+)/
+'''
