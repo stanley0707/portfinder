@@ -52,6 +52,12 @@ portfinder -t 192.168.1.1,10.0.0.0/24,example.com -p 1-1024,3389,8080 -P http -T
 | `-jl`, `--jsl`          | Output in JSON Lines format                             |
 | `-q`, `--quiet`         | Disable all stdout output                               |
 
+
+### usage with docker
+```commandline
+docker run --rm stanley0507/portfinder:latest -t 192.168.1.1 -p 1-1000
+```
+
 ### basic python usage
 
 ```python
