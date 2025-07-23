@@ -1,15 +1,9 @@
 import argparse
 import asyncio
-import sys
 import os
+import sys
 
 from portfinder.scanner import Scanner
-
-if getattr(sys, 'frozen', False):
-    os.environ["PYTHONOPTIMIZE"] = "2"
-    sys.path = [sys._MEIPASS] + sys.path
-    import warnings
-    warnings.simplefilter("ignore")
 
 
 def parse_args():
