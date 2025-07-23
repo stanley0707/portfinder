@@ -15,8 +15,23 @@ classifiers = [
     "Topic :: Security",
 ]
 
+[tool.nuitka]
+standalone = true
+onefile = true
+macos-disable-console = false
+output-dir = "dist"
+include-package = ["portfinder"]
+enable-plugin = ["no-qt", "pylint-warnings"]
+remove-output = true
+jobs = 4
+
+[tool.nuitka.windows]
+onefile-tempdir-spec = "%TEMP%\\portfinder"
+disable-console = false
+
 [tool.poetry.scripts]
 portfinder = "portfinder.cli:run"
+build = "scripts.build:build"
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -34,6 +49,7 @@ mypy = "^1.17.0"
 ruff = "^0.12.4"
 types-aiofiles = "^24.1.0.20250708"
 types-setuptools = "^80.9.0.20250529"
+nuitka = "^2.7.12"
 
 [build-system]
 requires = ["poetry-core"]

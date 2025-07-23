@@ -1,7 +1,15 @@
 import argparse
 import asyncio
+import sys
+import os
 
-from portfinder.scanner import create_scanner
+from portfinder.scanner import Scanner
+
+if getattr(sys, 'frozen', False):
+    os.environ["PYTHONOPTIMIZE"] = "2"
+    sys.path = [sys._MEIPASS] + sys.path
+    import warnings
+    warnings.simplefilter("ignore")
 
 
 def parse_args():
@@ -11,7 +19,7 @@ def parse_args():
     parser.add_argument("-P", "--protocol", help="Protocol to check (tcp, udp, http, https)")
     parser.add_argument("-T", "--timeout", type=float, default=2.0, help="Timeout in seconds")
     parser.add_argument("-c", "--concurrency", type=int, default=300, help="Maximum concurrent connections per host")
-    parser.add_argument("-tps", "--thread-pool-size", type=int, default=200, help="Thread pool size for hosts scanning")
+    parser.add_argument("-ips", "--ip-pool-size", type=int, default=200, help="Thread pool size for hosts scanning")
     parser.add_argument("-o", "--outfile", help="Output file path (without extension)")
     parser.add_argument("-j", "--js", action="store_true", help="Output in JSON format")
     parser.add_argument("-jl", "--jsl", action="store_true", help="Output in JSON Lines format")
@@ -21,8 +29,8 @@ def parse_args():
 
 async def main():
     args = parse_args()
-    async with create_scanner(**vars(args)) as scanner:
-        await scanner.cmd_run()
+    scanner = Scanner(**vars(args))
+    await scanner.cmd_run()
 
 
 def run():

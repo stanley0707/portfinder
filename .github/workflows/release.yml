@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-12, windows-2022]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Install dependencies
+        run: poetry install --no-dev
+
+      - name: Build with Nuitka
+        run: |
+          poetry run python -m nuitka \
+            --standalone \
+            --onefile \
+            --output-dir=dist \
+            --output-filename=portfinder \
+            --include-package=portfinder \
+            portfinder/cli.py
+
+      - name: Archive binary
+        run: |
+          mkdir release
+          cp dist/portfinder* release/
+          tar czvf portfinder-${{ matrix.os }}.tar.gz -C release .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: portfinder-${{ matrix.os }}
+          path: portfinder-*.tar.gz
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/portfinder-ubuntu-22.04.tar.gz
+            artifacts/portfinder-macos-12.tar.gz
+            artifacts/portfinder-windows-2022.tar.gz
+          tag_name: ${{ github.ref_name }}
+          body: "Auto-built binaries for all platforms"

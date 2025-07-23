@@ -3,10 +3,7 @@ from portfinder.dto import (
     Protocol,
     Result,
 )
-from portfinder.scanner import (
-    Scanner,
-    create_scanner,
-)
+from portfinder.scanner import Scanner
 from portfinder.utils import (
     check_http_port,
     check_https_port,
@@ -20,7 +17,6 @@ __all__ = [
     "IpVersion",
     "Result",
     "Scanner",
-    "create_scanner",
     "check_tcp_port",
     "check_udp_port",
     "check_http_port",

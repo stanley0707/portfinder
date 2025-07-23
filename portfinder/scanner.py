@@ -53,7 +53,7 @@ class Scanner:
         protocol: Protocol | None = None,
         timeout: float = 3.0,
         concurrency: int = 500,
-        thread_pool_size: int = 200,
+        ip_pool_size: int = 200,
         outfile: str | None = None,
         js: bool = False,
         jsl: bool = False,
@@ -70,9 +70,7 @@ class Scanner:
         self.jsl = jsl
         self.ports = self._parse_ports()
         self.concurrency = concurrency
-        self.semaphore = asyncio.Semaphore(concurrency)
-        self.thread_pool_size = thread_pool_size
-        self.thread_pool = ThreadPoolExecutor(max_workers=thread_pool_size)
+        self.ip_pool_size = ip_pool_size
         self.quiet = quiet
         self._print_banner()
 
@@ -85,7 +83,7 @@ class Scanner:
                 self._ports,
                 [i.value for i in self.protocols],
                 self.concurrency,
-                self.thread_pool_size,
+                self.ip_pool_size,
                 "=" * 70,
             )
 
@@ -152,43 +150,31 @@ class Scanner:
 
     async def _scan_host(self, host: str) -> list[Result]:
         """
-        Execution scan wrapper request host
+        Scan one host with concurrency limit semaphore
         Args:
-            host: host string item
-        Returns: list[Result]
+            host: str
+
+        Returns: list or Result
         """
         ip_version = IpVersion.IPV6 if ":" in host else IpVersion.IPV4
-        tasks = [self._scan_wrapper(host, port, ip_version) for port in self.ports if port <= 65535]
-        return [r for r in await asyncio.gather(*tasks) if r is not None]
+        semaphore = asyncio.Semaphore(self.concurrency)
 
-    async def _scan_wrapper(self, host: str, port: int, ip_version: IpVersion) -> Optional[Result]:
-        """
-        Async loop semaphore run wrapper.
-        :param host: host string item
-        :param port: port integer item
-        :param ip_version:
-        :return:
-        """
-        async with self.semaphore:
-            return await self.scan_service(host, port, self.protocols, ip_version)
+        async def scan_port(port: int) -> Optional[Result]:
+            async with semaphore:
+                return await self.scan_service(host, port, self.protocols, ip_version)
+
+        tasks = [scan_port(port) for port in self.ports if port <= 65535]
+        results = await asyncio.gather(*tasks)
+        return [r for r in results if r is not None]
 
     async def run(self) -> list[Result]:
         """
-        Run the scan with thread and async pool.
-        One thread for each host will be created.
-        :return: list of Result
+        Run async scanning task for each IP
+        Returns:
         """
-        loop = asyncio.get_event_loop()
-        scan_lambda: Callable[[str], list[Result]] = lambda h: asyncio.run(self._scan_host(h))
-
-        futures = [loop.run_in_executor(self.thread_pool, scan_lambda, host) for host in self.get_targets()]
-
-        results: list[Result] = []
-        for future in asyncio.as_completed(futures):
-            host_results = await future
-            results.extend(host_results)
-
-        return results
+        tasks = [asyncio.create_task(self._scan_host(host)) for host in self.get_targets()]
+        all_results = await asyncio.gather(*tasks)
+        return [r for sublist in all_results for r in sublist]
 
     async def cmd_run(self):
         """
@@ -240,22 +226,3 @@ class Scanner:
                     for res in results:
                         if res:
                             await f.write(json.dumps(res.to_dict()) + "\n")
-
-    def close(self, wait: bool = True):
-        """
-        Close the connection to the server
-        Args:
-            wait: bool default True
-
-        Returns:
-        """
-        self.thread_pool.shutdown(wait=wait)
-
-
-@asynccontextmanager
-async def create_scanner(**kwargs: dict[str, Any]) -> AsyncGenerator[Scanner, None]:
-    scanner: Scanner = Scanner(**kwargs)  # type: ignore[arg-type]
-    try:
-        yield scanner
-    finally:
-        scanner.close()
