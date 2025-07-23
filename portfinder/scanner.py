@@ -18,12 +18,12 @@ from typing import (
 import aiofiles
 import structlog
 
-from portex.dto import (
+from portfinder.dto import (
     IpVersion,
     Protocol,
     Result,
 )
-from portex.utils import (
+from portfinder.utils import (
     check_http_port,
     check_https_port,
     check_tcp_port,
@@ -36,22 +36,22 @@ logger = structlog.get_logger()
 
 class Scanner:
     __BANNER = """
-    ╔════════════════════════════════════════════════════════╗
-        ██████╗  ██████╗ ██████╗ ████████╗███████╗██╗  ██╗
-        ██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██╔════╝╚██╗██╔╝
-        ██████╔╝██║   ██║██████╔╝   ██║   █████╗   ╚███╔╝
-        ██╔═══╝ ██║   ██║██╔══██╗   ██║   ██╔══╝   ██╔██╗
-        ██║     ╚██████╔╝██║  ██║   ██║   ███████╗██╔╝ ██╗
-        ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝
-    ╚════════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════╗
+    ██████╗  ██████╗ ██████╗ ████████╗███████╗██╗███╗   ██╗██████╗ ███████╗██████╗ 
+    ██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██╔════╝██║████╗  ██║██╔══██╗██╔════╝██╔══██╗
+    ██████╔╝██║   ██║██████╔╝   ██║   █████╗  ██║██╔██╗ ██║██║  ██║█████╗  ██████╔╝
+    ██╔═══╝ ██║   ██║██╔══██╗   ██║   ██╔══╝  ██║██║╚██╗██║██║  ██║██╔══╝  ██╔══██╗
+    ██║     ╚██████╔╝██║  ██║   ██║   ██║     ██║██║ ╚████║██████╔╝███████╗██║  ██║
+    ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝ ╚══════╝╚═╝  ╚═╝
+╚════════════════════════════════════════════════════════╝
     """
 
     def __init__(
         self,
         target: str,
         ports: str = "80,443,53",
-        protocol: str | None = None,
-        timeout: float = 2.0,
+        protocol: Protocol | None = None,
+        timeout: float = 3.0,
         concurrency: int = 500,
         thread_pool_size: int = 200,
         outfile: str | None = None,
@@ -61,12 +61,15 @@ class Scanner:
     ):
         self.target = target
         self._ports = ports
-        self.protocol = protocol
+        self.protocols = (
+            [Protocol(protocol)] if protocol else [Protocol.TCP, Protocol.UDP, Protocol.HTTP, Protocol.HTTPS]
+        )
         self.timeout = timeout
         self.outfile = outfile
         self.js = js
         self.jsl = jsl
         self.ports = self._parse_ports()
+        self.concurrency = concurrency
         self.semaphore = asyncio.Semaphore(concurrency)
         self.thread_pool_size = thread_pool_size
         self.thread_pool = ThreadPoolExecutor(max_workers=thread_pool_size)
@@ -77,10 +80,11 @@ class Scanner:
         if not self.quiet:
             logger.info(self.__BANNER)
             logger.info(
-                "Target: %s \nPorts: %s\nProtocols: %s\nThread pool size: %s (1 thread / 1 ip) \n %s",
+                "Target: %s \nPorts: %s\nProtocols: %s\nConcurrency: %s\nThread pool size: %s (1 thread / 1 ip) \n %s",
                 self.target,
                 self._ports,
-                self.protocol,
+                [i.value for i in self.protocols],
+                self.concurrency,
                 self.thread_pool_size,
                 "=" * 70,
             )
@@ -91,12 +95,12 @@ class Scanner:
         :return:
         """
         ports: set[int] = set()
-        for part in self._ports.split(","):
-            if "-" in part:
-                start, end = map(int, part.split("-"))
+        for port in self._ports.split(","):
+            if "-" in port:
+                start, end = map(int, port.split("-"))
                 ports.update(range(start, end + 1))
             else:
-                ports.add(int(part))
+                ports.add(int(port))
         return sorted(ports)
 
     @property
@@ -109,24 +113,19 @@ class Scanner:
         }
 
     async def scan_service(
-        self, host: str, port: int, protocol: Optional[str] = None, ip_version: IpVersion = IpVersion.IPV4
+        self, host: str, port: int, protocols: Optional[list[Protocol]] = None, ip_version: IpVersion = IpVersion.IPV4
     ) -> Optional[Result]:
         """
         Call scan request by special or every protocol item
         and log if self.quiet.
-        :param host:
-        :param port:
-        :param protocol:
-        :param ip_version:
+        :param host: port string item
+        :param port: port integer item
+        :param protocols: any from Protocol
+        :param ip_version: any from IpVersion
         :return:
         """
         result = Result(host=host, port=port, ip_version=ip_version, protocols=[])
-        if protocol:
-            protocols_to_check = [Protocol(protocol)]
-        else:
-            protocols_to_check = [Protocol.TCP, Protocol.UDP, Protocol.HTTP, Protocol.HTTPS]
-
-        for proto in protocols_to_check:
+        for proto in protocols:
             if call := self.proto_call_mapping.get(proto):
                 if await call(host, port, self.timeout):
                     result.protocols.append(proto)
@@ -152,6 +151,12 @@ class Scanner:
                 yield target
 
     async def _scan_host(self, host: str) -> list[Result]:
+        """
+        Execution scan wrapper request host
+        Args:
+            host: host string item
+        Returns: list[Result]
+        """
         ip_version = IpVersion.IPV6 if ":" in host else IpVersion.IPV4
         tasks = [self._scan_wrapper(host, port, ip_version) for port in self.ports if port <= 65535]
         return [r for r in await asyncio.gather(*tasks) if r is not None]
@@ -159,19 +164,19 @@ class Scanner:
     async def _scan_wrapper(self, host: str, port: int, ip_version: IpVersion) -> Optional[Result]:
         """
         Async loop semaphore run wrapper.
-        :param host:
-        :param port:
+        :param host: host string item
+        :param port: port integer item
         :param ip_version:
         :return:
         """
         async with self.semaphore:
-            return await self.scan_service(host, port, self.protocol, ip_version)
+            return await self.scan_service(host, port, self.protocols, ip_version)
 
     async def run(self) -> list[Result]:
         """
         Run the scan with thread and async pool.
         One thread for each host will be created.
-        :return: list[Result]
+        :return: list of Result
         """
         loop = asyncio.get_event_loop()
         scan_lambda: Callable[[str], list[Result]] = lambda h: asyncio.run(self._scan_host(h))
@@ -199,7 +204,7 @@ class Scanner:
     async def _print_results(self, results: list[Result]) -> None:
         """
         Return result in stdout
-        :param results:
+        :param results: list of Result
         :return:
         """
         hosts: dict[str, list[Result]] = dict()
@@ -216,7 +221,7 @@ class Scanner:
     async def _save_results(self, results: list[Result]):
         """
         Saves results to a TXT, JSON or JSONL file.
-        :param results:
+        :param results: list of Result
         :return:
         """
         if self.outfile is not None:
@@ -236,12 +241,15 @@ class Scanner:
                         if res:
                             await f.write(json.dumps(res.to_dict()) + "\n")
 
-    async def close(self):
+    def close(self, wait: bool = True):
         """
         Close the connection to the server
-        :return:
+        Args:
+            wait: bool default True
+
+        Returns:
         """
-        self.thread_pool.shutdown(wait=True)
+        self.thread_pool.shutdown(wait=wait)
 
 
 @asynccontextmanager
@@ -250,4 +258,4 @@ async def create_scanner(**kwargs: dict[str, Any]) -> AsyncGenerator[Scanner, No
     try:
         yield scanner
     finally:
-        scanner.thread_pool.shutdown(wait=True)
+        scanner.close()

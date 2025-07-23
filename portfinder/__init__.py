@@ -1,13 +1,13 @@
-from portex.dto import (
+from portfinder.dto import (
     IpVersion,
     Protocol,
     Result,
 )
-from portex.scanner import (
+from portfinder.scanner import (
     Scanner,
     create_scanner,
 )
-from portex.utils import (
+from portfinder.utils import (
     check_http_port,
     check_https_port,
     check_tcp_port,

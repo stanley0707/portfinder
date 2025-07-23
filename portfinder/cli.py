@@ -1,11 +1,11 @@
 import argparse
 import asyncio
 
-from portex.scanner import create_scanner
+from portfinder.scanner import create_scanner
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="PORTEX - Advanced Port Scanner")
+    parser = argparse.ArgumentParser(description="PORTFINDER - Advanced Port Scanner")
     parser.add_argument("-t", "--target", required=True, help="Target IP/CIDR/domain (comma-separated)")
     parser.add_argument("-p", "--ports", default="80,443,53", help="Ports to scan (e.g. '1-1000,3389')")
     parser.add_argument("-P", "--protocol", help="Protocol to check (tcp, udp, http, https)")
@@ -23,6 +23,10 @@ async def main():
     args = parse_args()
     async with create_scanner(**vars(args)) as scanner:
         await scanner.cmd_run()
+
+
+def run():
+    asyncio.run(main())
 
 
 if __name__ == "__main__":

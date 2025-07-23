@@ -1,0 +1,66 @@
+[
+  {
+    "host": "37.140.192.16",
+    "port": 53,
+    "ip_version": "ipv4",
+    "protocols": [
+      [
+        "tcp"
+      ]
+    ]
+  },
+  {
+    "host": "37.140.192.16",
+    "port": 80,
+    "ip_version": "ipv4",
+    "protocols": [
+      [
+        "tcp"
+      ]
+    ]
+  },
+  {
+    "host": "37.140.192.16",
+    "port": 443,
+    "ip_version": "ipv4",
+    "protocols": [
+      [
+        "tcp",
+        "http",
+        "https"
+      ]
+    ]
+  },
+  {
+    "host": "37.140.192.16",
+    "port": 1500,
+    "ip_version": "ipv4",
+    "protocols": [
+      [
+        "tcp",
+        "http",
+        "https"
+      ]
+    ]
+  },
+  {
+    "host": "37.140.192.16",
+    "port": 3306,
+    "ip_version": "ipv4",
+    "protocols": [
+      [
+        "tcp"
+      ]
+    ]
+  },
+  {
+    "host": "37.140.192.16",
+    "port": 3310,
+    "ip_version": "ipv4",
+    "protocols": [
+      [
+        "tcp"
+      ]
+    ]
+  }
+]

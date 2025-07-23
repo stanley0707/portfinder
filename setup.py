@@ -29,7 +29,7 @@ setup(
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "portex=portex.cli:main",
+            "portfinder=portfinder.cli:run",
         ],
     },
 )
