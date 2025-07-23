@@ -2,12 +2,9 @@ import asyncio
 import ipaddress
 import json
 from collections.abc import (
-    AsyncGenerator,
     Coroutine,
     Generator,
 )
-from concurrent.futures import ThreadPoolExecutor
-from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import (
     Any,
@@ -53,7 +50,6 @@ class Scanner:
         protocol: Protocol | None = None,
         timeout: float = 3.0,
         concurrency: int = 500,
-        ip_pool_size: int = 200,
         outfile: str | None = None,
         js: bool = False,
         jsl: bool = False,
@@ -70,7 +66,6 @@ class Scanner:
         self.jsl = jsl
         self.ports = self._parse_ports()
         self.concurrency = concurrency
-        self.ip_pool_size = ip_pool_size
         self.quiet = quiet
         self._print_banner()
 
@@ -78,7 +73,7 @@ class Scanner:
         if not self.quiet:
             logger.info(self.__BANNER)
             logger.info(
-                "Target: %s \nPorts: %s\nProtocols: %s\nConcurrency: %s\nThread pool size: %s (1 thread / 1 ip) \n %s",
+                "\nTarget: %s \nPorts: %s\nProtocols: %s\nConcurrency: %s\nThread pool size: %s\n %s",
                 self.target,
                 self._ports,
                 [i.value for i in self.protocols],

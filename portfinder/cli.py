@@ -19,7 +19,6 @@ def parse_args():
     parser.add_argument("-P", "--protocol", help="Protocol to check (tcp, udp, http, https)")
     parser.add_argument("-T", "--timeout", type=float, default=2.0, help="Timeout in seconds")
     parser.add_argument("-c", "--concurrency", type=int, default=300, help="Maximum concurrent connections per host")
-    parser.add_argument("-ips", "--ip-pool-size", type=int, default=200, help="Thread pool size for hosts scanning")
     parser.add_argument("-o", "--outfile", help="Output file path (without extension)")
     parser.add_argument("-j", "--js", action="store_true", help="Output in JSON format")
     parser.add_argument("-jl", "--jsl", action="store_true", help="Output in JSON Lines format")
