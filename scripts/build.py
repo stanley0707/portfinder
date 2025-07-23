@@ -3,6 +3,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+
 def build():
     dist_dir = Path("dist")
     if dist_dir.exists():
@@ -13,7 +14,9 @@ def build():
                 shutil.rmtree(item)
 
     cmd = [
-        "python", "-m", "nuitka",
+        "python",
+        "-m",
+        "nuitka",
         "--onefile",
         "--output-dir=dist",
         "--output-filename=portfinder",
@@ -24,13 +27,16 @@ def build():
     ]
 
     if platform.system() == "Darwin":
-        cmd.extend([
-            "--macos-disable-console",
-        ])
+        cmd.extend(
+            [
+                "--macos-disable-console",
+            ]
+        )
 
     cmd.append("portfinder/cli.py")
 
     subprocess.run([arg for arg in cmd if arg], check=True)
+
 
 if __name__ == "__main__":
     build()

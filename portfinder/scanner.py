@@ -73,12 +73,11 @@ class Scanner:
         if not self.quiet:
             logger.info(self.__BANNER)
             logger.info(
-                "\nTarget: %s \nPorts: %s\nProtocols: %s\nConcurrency: %s\nThread pool size: %s\n %s",
+                "\nTarget: %s \nPorts: %s\nProtocols: %s\nConcurrency: %s\n %s",
                 self.target,
                 self._ports,
                 [i.value for i in self.protocols],
                 self.concurrency,
-                self.ip_pool_size,
                 "=" * 70,
             )
 
@@ -106,7 +105,7 @@ class Scanner:
         }
 
     async def scan_service(
-        self, host: str, port: int, protocols: Optional[list[Protocol]] = None, ip_version: IpVersion = IpVersion.IPV4
+        self, host: str, port: int, protocols: list[Protocol], ip_version: IpVersion = IpVersion.IPV4
     ) -> Optional[Result]:
         """
         Call scan request by special or every protocol item
