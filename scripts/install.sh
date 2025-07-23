@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Installing PORTEX..."
+echo "Installing PORTFINDER..."
 
 # Установка через pipx (рекомендуется)
 if command -v pipx &> /dev/null; then
@@ -10,8 +10,8 @@ fi
 
 # Создаём симлинк для глобального доступа
 if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
-    ln -sf ~/.local/bin/portex /usr/local/bin/portex 2>/dev/null || true
-    echo "Installation complete. Run 'portex --help'"
+    ln -sf ~/.local/bin/portfinder /usr/local/bin/portfinder 2>/dev/null || true
+    echo "Installation complete. Run 'portfinder --help'"
 else
-    echo "Installation complete. Run 'portex --help' from ~/.local/bin"
+    echo "Installation complete. Run 'portfinder --help' from ~/.local/bin"
 fi

@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "portex"
+name = "portfinder"
 version = "0.1.0"
 description = "port scanner"
 authors = ["Stanislav Shilov <s.shilow@lynkey.io>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/stanley0707/portex"
-repository = "https://github.com/stanley0707/portex"
+homepage = "https://github.com/stanley0707/portfinder"
+repository = "https://github.com/stanley0707/portfinder"
 keywords = ["port", "scanner", "network", "security"]
 classifiers = [
     "Programming Language :: Python :: 3.11",
@@ -16,7 +16,7 @@ classifiers = [
 ]
 
 [tool.poetry.scripts]
-portex = "portex.cli:main"
+portfinder = "portfinder.cli:run"
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -53,7 +53,7 @@ exclude = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["portex"]
+known-first-party = ["portfinder"]
 combine-as-imports = true
 split-on-trailing-comma = true
 force-sort-within-sections = true
