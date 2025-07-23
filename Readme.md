@@ -80,14 +80,11 @@ async def run_scan():
 ## output files format:
 * txt file
 ```txt
-...
 0.0.0.0:21 [ipv4] (tcp)
-...
 ```
 * json file
 ```json
 [
-  ...
   {
     "host": "0.0.0.0",
     "port": 21,
@@ -97,16 +94,12 @@ async def run_scan():
         "tcp"
       ]
     ]
-  },
-...
+  }
 ]
 ```
 * jsonl file
 ```json lines
-...
 {"host": "0.0.0.0", "port": 53, "ip_version": "ipv4", "protocols": [["tcp"]]}
-...
-
 ```
 ### powered by lynkey.io
 License
