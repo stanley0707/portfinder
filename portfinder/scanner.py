@@ -17,7 +17,7 @@ from typing import (
 
 import aiofiles
 import structlog
-
+from contextlib import suppress
 from portfinder.dto import (
     IpVersion,
     Protocol,
@@ -201,13 +201,14 @@ class Scanner:
         Run asynchronously scan port scan as completed and return result
         """
         results: list[Result] = []
-        for future in asyncio.as_completed(
-            [self.scan_port(host, port) async for host in self.get_targets() for port in self.ports if port <= 65535]
-        ):
-            if result := await future:
-                results.append(result)
+        with suppress(asyncio.CancelledError, KeyboardInterrupt):
+            for future in asyncio.as_completed(
+                [self.scan_port(host, port) async for host in self.get_targets() for port in self.ports if port <= 65535]
+            ):
+                if result := await future:
+                    results.append(result)
 
-        return results
+            return results
 
     async def cmd_run(self):
         """
