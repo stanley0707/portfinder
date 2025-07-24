@@ -1,19 +1,45 @@
 [tool.poetry]
-name = "portex"
-version = "0.1.0"
+name = "portfinder"
+version = "0.1.6"
 description = "port scanner"
 authors = ["Stanislav Shilov <s.shilow@lynkey.io>"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/stanley0707/portfinder"
+repository = "https://github.com/stanley0707/portfinder"
+keywords = ["port", "scanner", "network", "security"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Topic :: Security",
+]
+
+[tool.nuitka]
+standalone = true
+onefile = true
+macos-disable-console = false
+output-dir = "dist"
+include-package = ["portfinder"]
+enable-plugin = ["no-qt", "pylint-warnings"]
+remove-output = true
+jobs = 4
+
+[tool.nuitka.windows]
+onefile-tempdir-spec = "%TEMP%\\portfinder"
+disable-console = false
+
+[tool.poetry.scripts]
+portfinder = "portfinder.cli:run"
+build = "scripts.build:build"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-aiohttp = "^3.12.14"
 ipaddress = "^1.0.23"
 aiofiles = "^24.1.0"
 structlog = "^25.4.0"
 rich = "^14.0.0"
-
+typer = "^0.16.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
@@ -22,6 +48,7 @@ mypy = "^1.17.0"
 ruff = "^0.12.4"
 types-aiofiles = "^24.1.0.20250708"
 types-setuptools = "^80.9.0.20250529"
+nuitka = "^2.7.12"
 
 [build-system]
 requires = ["poetry-core"]
@@ -41,7 +68,7 @@ exclude = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["portex"]
+known-first-party = ["portfinder"]
 combine-as-imports = true
 split-on-trailing-comma = true
 force-sort-within-sections = true

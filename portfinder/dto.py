@@ -14,6 +14,12 @@ class Protocol(StrEnum):
     HTTPS = "https"
 
 
+class ResultFileFormatEnum(StrEnum):
+    TXT = "txt"
+    JSON = "js"
+    JSONL = "jsl"
+
+
 @dataclass
 class Result:
     host: str

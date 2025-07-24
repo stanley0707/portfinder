@@ -2,4 +2,6 @@ env/
 venv/
 .idea/
 __pycache__/
-
+dist
+*.json
+build
