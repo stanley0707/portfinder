@@ -48,7 +48,7 @@ async def read_file(
     input_file: Path,
 ):
     try:
-        async with aiofiles.open(input_path, "r") as f:
+        async with aiofiles.open(input_file, "r") as f:
             async for line in f:
                 yield line.strip().replace(" ", "")
     except FileNotFoundError:
