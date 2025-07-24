@@ -190,8 +190,11 @@ class Scanner:
         with semaphore.
         """
         ip_version = IpVersion.IPV6 if ":" in host else IpVersion.IPV4
-        async with self.semaphore:
-            return await self.scan_service(host, port, self.protocols, ip_version)
+        try:
+            async with self.semaphore:
+                return await self.scan_service(host, port, self.protocols, ip_version)
+        except asyncio.CancelledError:
+            pass
 
     async def run(self) -> list[Result]:
         """
