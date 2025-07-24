@@ -35,7 +35,6 @@ build = "scripts.build:build"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-aiohttp = "^3.12.14"
 ipaddress = "^1.0.23"
 aiofiles = "^24.1.0"
 structlog = "^25.4.0"
