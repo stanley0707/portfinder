@@ -7,6 +7,7 @@ from collections.abc import (
     Coroutine,
     Generator,
 )
+from contextlib import suppress
 from pathlib import Path
 from typing import (
     Any,
@@ -17,7 +18,7 @@ from typing import (
 
 import aiofiles
 import structlog
-from contextlib import suppress
+
 from portfinder.dto import (
     IpVersion,
     Protocol,
@@ -201,25 +202,27 @@ class Scanner:
         Run asynchronously scan port scan as completed and return result
         """
         results: list[Result] = []
-        with suppress(asyncio.CancelledError, KeyboardInterrupt):
-            for future in asyncio.as_completed(
-                [self.scan_port(host, port) async for host in self.get_targets() for port in self.ports if port <= 65535]
-            ):
-                if result := await future:
-                    results.append(result)
+        for future in asyncio.as_completed(
+            [self.scan_port(host, port) async for host in self.get_targets() for port in self.ports if port <= 65535]
+        ):
+            if result := await future:
+                results.append(result)
 
-            return results
+        return results
 
     async def cmd_run(self):
         """
-        Wrapper for run scan with result saving
+        Wrapper for run scan with result saving and
+        suppress exceptions for cancellation, KeyboardInterrupt and any Runtime
+        from cli command running
         :return:
         """
-        results = await self.run()
-        if self.outfile:
-            await self._save_results(results)
-        if not self.quiet:
-            await self._print_results(results)
+        with suppress(asyncio.CancelledError, KeyboardInterrupt, RuntimeError):
+            results = await self.run()
+            if self.outfile:
+                await self._save_results(results)
+            if not self.quiet:
+                await self._print_results(results)
 
     async def _print_results(self, results: list[Result]) -> None:
         """

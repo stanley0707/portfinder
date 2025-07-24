@@ -4,9 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     net-tools \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /data
-
-RUN pip install git+https://github.com/stanley0707/portfinder.git@
+RUN pip install --no-cache-dir portfinder
 
 
 ENTRYPOINT ["portfinder"]
