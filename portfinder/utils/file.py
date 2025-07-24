@@ -44,6 +44,7 @@ async def save_result(
         case ResultFileFormatEnum.JSONL:
             await write_jsonl(output_path, results)
 
+
 async def read_file(
     input_file: Path,
 ):

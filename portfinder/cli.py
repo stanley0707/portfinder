@@ -22,15 +22,16 @@ def parse_args():
 
 
 async def main():
-    try:
-        args = parse_args()
-        scanner = Scanner(**vars(args))
-        await scanner.cmd_run()
-    except (KeyboardInterrupt, RuntimeError):
-        sys.exit(0)
+    args = parse_args()
+    scanner = Scanner(**vars(args))
+    await scanner.cmd_run()
+
 
 def run():
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, RuntimeError):
+        sys.exit(0)
 
 
 if __name__ == "__main__":
