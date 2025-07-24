@@ -45,9 +45,7 @@ async def save_result(
             await write_jsonl(output_path, results)
 
 
-def resolve_input_path(user_input: str, base_dir: Path = None) -> Path:
-    path = Path(user_input)
-
+def resolve_input_path(path: Path, base_dir: Path = None) -> Path:
     if path.is_absolute():
         if path.exists():
             return path
@@ -71,7 +69,7 @@ async def read_file(
     input_file: Path,
 ):
     try:
-        input_path = resolve_input_path(self.input_file, Path.cwd())
+        input_path = resolve_input_path(input_file, Path.cwd())
         async with aiofiles.open(input_path, "r") as f:
             async for line in f:
                 yield line.strip().replace(" ", "")
