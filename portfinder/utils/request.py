@@ -1,6 +1,5 @@
 import asyncio
-
-import aiohttp
+import ssl
 
 
 async def check_udp_port(host: str, port: int, timeout: float = 1.0) -> bool:
@@ -47,13 +46,21 @@ async def check_udp_port(host: str, port: int, timeout: float = 1.0) -> bool:
                 timeout,
             )
             return result
-        except asyncio.TimeoutError:
+        except (asyncio.TimeoutError, ConnectionRefusedError, OSError, ssl.SSLError):
             return False
+        except ConnectionResetError:
+            return True
         finally:
-            transport.close()
+            try:
+                transport.close()
+            except ConnectionResetError:
+                return True
+            except (ssl.SSLError, asyncio.TimeoutError):
+                pass
 
     except (OSError, ConnectionRefusedError):
         return False
+    return True
 
 
 async def check_tcp_port(host, port, timeout=1) -> bool:
@@ -72,17 +79,23 @@ async def check_tcp_port(host, port, timeout=1) -> bool:
     try:
         reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=timeout)
         return True
-    except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+    except (asyncio.TimeoutError, ConnectionRefusedError, OSError, ssl.SSLError):
         return False
-    except Exception as _:
-        return False
+    except ConnectionResetError:
+        return True
     finally:
-        if writer:
-            writer.close()
-            await writer.wait_closed()
+        if writer is not None:
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except ConnectionResetError:
+                return True
+            except (ssl.SSLError, asyncio.TimeoutError):
+                pass
+    return True
 
 
-async def check_http_port(host: str, port: int, ssl: bool = False, timeout: float = 3.0) -> bool:
+async def check_http_port(host: str, port: int, timeout: float = 3.0) -> bool:
     """
     Asynchronously checks if a HTTP port is open on a given host
     :param host:
@@ -91,18 +104,28 @@ async def check_http_port(host: str, port: int, ssl: bool = False, timeout: floa
     :param timeout:
     :return:
     """
-    url = f"http{'s' if ssl else ''}://{host}:{port}"
+    writer = None
     try:
-        connector = aiohttp.TCPConnector(force_close=True)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            async with session.get(
-                url,
-                ssl=False,
-                timeout=aiohttp.ClientTimeout(total=timeout),
-            ) as resp:
-                return resp.status < 500
-    except Exception:
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(host, port),
+            timeout=timeout,
+        )
+        writer.write(b"GET / HTTP/1.1\r\nHost: portfinder_scan\r\n\r\n")
+        await asyncio.wait_for(writer.drain(), timeout=timeout)
+    except (asyncio.TimeoutError, ConnectionRefusedError, OSError, ssl.SSLError):
         return False
+    except ConnectionResetError:
+        return True
+    finally:
+        if writer is not None:
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except ConnectionResetError:
+                return True
+            except (ssl.SSLError, asyncio.TimeoutError):
+                pass
+    return True
 
 
 async def check_https_port(host: str, port: int, timeout: float = 3.0) -> bool:
@@ -113,4 +136,31 @@ async def check_https_port(host: str, port: int, timeout: float = 3.0) -> bool:
     :param timeout:
     :return:
     """
-    return await check_http_port(host, port, ssl=True, timeout=timeout)
+    writer = None
+    try:
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_connection(host, port, ssl=ssl_context),
+            timeout=timeout,
+        )
+
+        writer.write(b"GET / HTTP/1.1\r\nHost: lol\r\n\r\n")
+        await asyncio.wait_for(writer.drain(), timeout=timeout)
+        return True
+
+    except (asyncio.TimeoutError, ConnectionRefusedError, OSError, ssl.SSLError):
+        return False
+    except ConnectionResetError:
+        return True
+    finally:
+        if writer is not None:
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except ConnectionResetError:
+                return True
+            except (ssl.SSLError, asyncio.TimeoutError):
+                pass
+    return True
