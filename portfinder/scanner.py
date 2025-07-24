@@ -1,13 +1,16 @@
 import asyncio
 import ipaddress
+import itertools
 import json
 from collections.abc import (
+    AsyncGenerator,
     Coroutine,
     Generator,
 )
 from pathlib import Path
 from typing import (
     Any,
+    Awaitable,
     Callable,
     Optional,
 )
@@ -19,12 +22,15 @@ from portfinder.dto import (
     IpVersion,
     Protocol,
     Result,
+    ResultFileFormatEnum,
 )
 from portfinder.utils import (
     check_http_port,
     check_https_port,
     check_tcp_port,
     check_udp_port,
+    read_file,
+    save_result,
 )
 
 
@@ -45,16 +51,19 @@ class Scanner:
 
     def __init__(
         self,
-        target: str,
+        target: str | None = None,
         ports: str = "80,443,53",
         protocol: Protocol | None = None,
         timeout: float = 3.0,
         concurrency: int = 500,
         outfile: str | None = None,
+        file: str | None = None,
         js: bool = False,
         jsl: bool = False,
         quiet: bool = False,
     ):
+        if not any([target, file]):
+            raise ValueError("target or file are required")
         self.target = target
         self._ports = ports
         self.protocols = (
@@ -62,19 +71,44 @@ class Scanner:
         )
         self.timeout = timeout
         self.outfile = outfile
+        self.input_file = file
         self.js = js
         self.jsl = jsl
         self.ports = self._parse_ports()
         self.concurrency = concurrency
+        self.semaphore = asyncio.Semaphore(concurrency)
         self.quiet = quiet
+
         self._print_banner()
+
+    @property
+    def result_format(self) -> ResultFileFormatEnum:
+        """
+        Result file format by command parameters
+        return ResultFileFormatEnum
+        """
+        if self.js:
+            return ResultFileFormatEnum.JSON
+        elif self.jsl:
+            return ResultFileFormatEnum.JSONL
+
+        return ResultFileFormatEnum.TXT
+
+    @property
+    def proto_call_mapping(self) -> dict[Protocol, Callable[..., Coroutine[Any, Any, bool]]]:
+        return {
+            Protocol.TCP: check_tcp_port,
+            Protocol.UDP: check_udp_port,
+            Protocol.HTTP: check_http_port,
+            Protocol.HTTPS: check_https_port,
+        }
 
     def _print_banner(self):
         if not self.quiet:
             logger.info(self.__BANNER)
             logger.info(
                 "\nTarget: %s \nPorts: %s\nProtocols: %s\nConcurrency: %s\n %s",
-                self.target,
+                self.target or self.input_file,
                 self._ports,
                 [i.value for i in self.protocols],
                 self.concurrency,
@@ -95,14 +129,38 @@ class Scanner:
                 ports.add(int(port))
         return sorted(ports)
 
-    @property
-    def proto_call_mapping(self) -> dict[Protocol, Callable[..., Coroutine[Any, Any, bool]]]:
-        return {
-            Protocol.TCP: check_tcp_port,
-            Protocol.UDP: check_udp_port,
-            Protocol.HTTP: check_http_port,
-            Protocol.HTTPS: check_https_port,
-        }
+    async def _process_target(self, target: str) -> AsyncGenerator[str, None]:
+        """
+        Internal generator for one target processing (IP or CIDR)
+        return AsyncGenerator string
+        """
+        if "/" in target:
+            try:
+                network = ipaddress.ip_network(target, strict=False)
+                for ip in network.hosts():
+                    yield str(ip)
+                    await asyncio.sleep(0.1)
+            except ValueError:
+                return
+        else:
+            yield target
+            await asyncio.sleep(0.1)
+
+    async def get_targets(self) -> AsyncGenerator[str, None]:
+        """
+        Prepare targets IPs by subnet CIDR or simple ip return.
+        return AsyncGenerator IP from _process_target wrapper function
+        """
+        if self.input_file is not None:
+            async for line in read_file(Path(self.input_file)):
+                for target in line.strip().split(","):
+                    async for ip in self._process_target(target):
+                        yield ip
+
+        if self.target is not None:
+            for target in self.target.replace(" ", "").split(","):
+                async for ip in self._process_target(target):
+                    yield ip
 
     async def scan_service(
         self, host: str, port: int, protocols: list[Protocol], ip_version: IpVersion = IpVersion.IPV4
@@ -122,53 +180,31 @@ class Scanner:
                 if await call(host, port, self.timeout):
                     result.protocols.append(proto)
                     if not self.quiet:
-                        logger.info(result)
+                        await logger.ainfo(result)
 
         return result if result.protocols else None
 
-    def get_targets(self) -> Generator[str, None, None]:
+    async def scan_port(self, host: str, port: int) -> Optional[Result]:
         """
-        Prepare targets IPs by subnet CIDR or simple ip return
-        :return:
-        """
-        for target in self.target.replace(" ", "").split(","):
-            if "/" in target:
-                try:
-                    network = ipaddress.ip_network(target, strict=False)
-                    for ip in network.hosts():
-                        yield str(ip)
-                except ValueError:
-                    continue
-            else:
-                yield target
-
-    async def _scan_host(self, host: str) -> list[Result]:
-        """
-        Scan one host with concurrency limit semaphore
-        Args:
-            host: str
-
-        Returns: list or Result
+        Call scan request by special or every protocol item
+        with semaphore.
         """
         ip_version = IpVersion.IPV6 if ":" in host else IpVersion.IPV4
-        semaphore = asyncio.Semaphore(self.concurrency)
-
-        async def scan_port(port: int) -> Optional[Result]:
-            async with semaphore:
-                return await self.scan_service(host, port, self.protocols, ip_version)
-
-        tasks = [scan_port(port) for port in self.ports if port <= 65535]
-        results = await asyncio.gather(*tasks)
-        return [r for r in results if r is not None]
+        async with self.semaphore:
+            return await self.scan_service(host, port, self.protocols, ip_version)
 
     async def run(self) -> list[Result]:
         """
-        Run async scanning task for each IP
-        Returns:
+        Run asynchronously scan port scan as completed and return result
         """
-        tasks = [asyncio.create_task(self._scan_host(host)) for host in self.get_targets()]
-        all_results = await asyncio.gather(*tasks)
-        return [r for sublist in all_results for r in sublist]
+        results: list[Result] = []
+        for future in asyncio.as_completed(
+            [self.scan_port(host, port) async for host in self.get_targets() for port in self.ports if port <= 65535]
+        ):
+            if result := await future:
+                results.append(result)
+
+        return results
 
     async def cmd_run(self):
         """
@@ -194,11 +230,11 @@ class Scanner:
             hosts[res.host].append(res)
 
         for host, host_results in hosts.items():
-            logger.info("\nResults for %s | %s ports found", host, len(host_results))
+            await logger.ainfo("\nResults for %s | %s ports found", host, len(host_results))
             for res in host_results:
-                logger.info(str(res))
+                await logger.ainfo(str(res))
 
-    async def _save_results(self, results: list[Result]):
+    async def _save_results(self, results: list[Result]) -> None:
         """
         Saves results to a TXT, JSON or JSONL file.
         :param results: list of Result
@@ -206,17 +242,4 @@ class Scanner:
         """
         if self.outfile is not None:
             output_path: Path = Path(self.outfile)
-
-            if not self.js and not self.jsl:
-                async with aiofiles.open(output_path.with_suffix(".txt"), "w") as f:
-                    for res in results:
-                        if res:
-                            await f.write(str(res))
-            elif self.js:
-                async with aiofiles.open(output_path.with_suffix(".json"), "w") as f:
-                    await f.write(json.dumps([r.to_dict() for r in results if r], indent=2))
-            elif self.jsl:
-                async with aiofiles.open(output_path.with_suffix(".jsonl"), "w") as f:
-                    for res in results:
-                        if res:
-                            await f.write(json.dumps(res.to_dict()) + "\n")
+            await save_result(output_path, self.result_format, results)
