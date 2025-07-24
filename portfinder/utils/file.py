@@ -45,11 +45,34 @@ async def save_result(
             await write_jsonl(output_path, results)
 
 
+def resolve_input_path(user_input: str, base_dir: Path = None) -> Path:
+    path = Path(user_input)
+
+    if path.is_absolute():
+        if path.exists():
+            return path
+        raise FileNotFoundError(f"Absolute path not found: {path}")
+
+    base = base_dir if base_dir is not None else Path.cwd()
+    full_path = (base / path).resolve()
+
+    if full_path.exists():
+        return full_path
+
+    raise FileNotFoundError(
+        f"File not found: '{user_input}'\n"
+        f"Tried paths:\n"
+        f"1. Absolute: {path.absolute()}\n"
+        f"2. Relative to base dir: {full_path}\n"
+        f"Base dir: {base}"
+    )
+
 async def read_file(
     input_file: Path,
 ):
     try:
-        async with aiofiles.open(Path.cwd() / input_file, "r") as f:
+        input_path = resolve_input_path(self.input_file, Path.cwd())
+        async with aiofiles.open(input_path, "r") as f:
             async for line in f:
                 yield line.strip().replace(" ", "")
     except FileNotFoundError:
