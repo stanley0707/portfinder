@@ -1,5 +1,6 @@
 import asyncio
 import ipaddress
+import sys
 from collections.abc import (
     AsyncGenerator,
     Coroutine,
@@ -57,6 +58,7 @@ class Scanner:
         js: bool = False,
         jsl: bool = False,
         quiet: bool = False,
+        uvloop_disable: bool = False,
     ):
         if not any([target, file]):
             raise ValueError("target or file are required")
@@ -74,8 +76,20 @@ class Scanner:
         self.concurrency = concurrency
         self.semaphore = asyncio.Semaphore(concurrency)
         self.quiet = quiet
+        self.uvloop_disable = uvloop_disable
 
         self._print_banner()
+
+    async def _ensure_uvloop(self):
+        """
+        Init uvloop for Darwin or Linux if needed
+        Returns:
+        """
+        if self.uvloop_disable or sys.platform == "win32":
+            return
+        import uvloop
+
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
     @property
     def result_format(self) -> ResultFileFormatEnum:
@@ -192,10 +206,13 @@ class Scanner:
         except asyncio.CancelledError:
             pass
 
+        return None
+
     async def run(self) -> list[Result]:
         """
         Run asynchronously scan port scan as completed and return result
         """
+        await self._ensure_uvloop()
         results: list[Result] = []
         for future in asyncio.as_completed(
             [self.scan_port(host, port) async for host in self.get_targets() for port in self.ports if port <= 65535]
