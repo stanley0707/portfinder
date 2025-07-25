@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import os
 import sys
 
 from portfinder.scanner import Scanner
@@ -18,7 +17,8 @@ def parse_args():
     parser.add_argument("-j", "--js", action="store_true", help="Output in JSON format")
     parser.add_argument("-jl", "--jsl", action="store_true", help="Output in JSON Lines format")
     parser.add_argument("-q", "--quiet", action="store_true", help="Disable all stdout output")
-    return parser.parse_args()
+    parser.add_argument("-u", "--uvloop_disable", action="store_true", help="Disable uvloop")
+    return parser.parse_args()  # uvloop_enabled
 
 
 async def main():

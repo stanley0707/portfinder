@@ -6,38 +6,35 @@ from pathlib import Path
 
 def build():
     dist_dir = Path("dist")
-    if dist_dir.exists():
-        for item in dist_dir.glob("*"):
-            if item.is_file():
-                item.unlink()
-            else:
-                shutil.rmtree(item)
+    shutil.rmtree(dist_dir, ignore_errors=True)
 
     cmd = [
         "python",
         "-m",
         "nuitka",
-        "--onefile",
+        "--standalone",
         "--output-dir=dist",
         "--output-filename=portfinder",
-        "--include-package=portfinder",
-        "--remove-output",
+        "--lto=yes",
+        "--python-flag=no_site",
         "--assume-yes-for-downloads",
-        "--disable-console" if platform.system() == "Windows" else "",
+        "--include-package=portfinder",
+        "--include-package=uvloop" if platform.system() != "Windows" else "",
+        "--include-package=structlog",
+        "--remove-output",
+        "portfinder/cli.py",
     ]
 
-    if platform.system() == "Darwin":
-        cmd.extend(
-            [
-                "--macos-disable-console",
-            ]
-        )
-
-    cmd.append("portfinder/cli.py")
-
+    print(f"[+] Building for {platform.system()}...")
     subprocess.run([arg for arg in cmd if arg], check=True)
+
+    binary = dist_dir / "portfinder.dist" / "portfinder"
+    if binary.exists():
+        print(f"[+] Success! Binary: {binary}")
+        print(f"[+] Test speed: time {binary} --help")
+    else:
+        raise RuntimeError("Build failed: binary not found")
 
 
 if __name__ == "__main__":
     build()
-    print("Build complete! Binary is in dist/")
