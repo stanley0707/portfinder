@@ -47,7 +47,7 @@ portfinder -t 192.168.1.1,10.0.0.0/24,example.com -p 1-1024,3389,8080 -P http -T
 | `-p`, `--ports`       | Ports to scan (default: `80,443,53`)                                                      |
 | `-P`, `--protocol`    | Protocol to check (tcp, udp, http, https)                                                 |
 | `-T`, `--timeout`     | Timeout in seconds (default: 2.0)                                                         |
-| `-c`, `--concurrency` | Maximum concurrent connections per host (default: 300) no more than ~500-1000 on CPU cores |
+| `-c`, `--concurrency` | Maximum concurrent connections per host (default: 1000) no more than ~500-1000 on CPU cores |
 | `-o`, `--outfile`     | Output file path (without extension)                                                      |
 | `-j`, `--js`          | Output in JSON format                                                                     |
 | `-jl`, `--jsl`        | Output in JSON Lines format                                                               |
@@ -82,8 +82,7 @@ async def run_scan():
         ports="80-23000",
         protocol=Protocol.HTTP,
         timeout=4.0,
-        concurrency=400,
-        ip_pool_size=200,
+        concurrency=700,
     )
     results: list[Result] = await scanner.run()
     ...
